@@ -9,6 +9,18 @@ console.log(process.env);
 app.use(cors());
 app.use(express.json())
 
+const verifyFirebaseToken = (req, res, next) => {
+    console.log("in the verify middleware", req.headers.authorization)
+    if(!req.headers.authorization) {
+        return res.status(401).send({ message: 'unauthorized access'})
+    }
+    const token = req.headers.authorization.split(' ')[1];
+    if(!token) {
+        return res.status(401).send({message: 'unauthorized access' })
+    }
+
+    next();
+}
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.otmudjl.mongodb.net/?appName=Cluster0`;
 const client = new MongoClient(uri, {
@@ -131,7 +143,7 @@ async function run() {
             })
 
                             // rating related apis
-            app.get('/rating', async(req, res) =>{
+            app.get('/rating', verifyFirebaseToken, async(req, res) =>{
                 const user_email = req.query.user_email;
                 const query = {};
                 if(user_email){
