@@ -100,7 +100,7 @@ async function run() {
             
             app.get('/products/:id', async(req, res) =>{
                 const id = req.params.id;
-                const query = { _id: new ObjectId(id)}
+                const query = { product_id: req.params.id};
                 const result = await productsCollection.findOne(query);
                 res.send(result);
             } )
@@ -133,58 +133,52 @@ async function run() {
             })
 
                          // myProperty realted apis
-            app.get('/myproperty', async(req, res) =>{
+            app.get('/myproperty',verifyFirebaseToken, async(req, res) =>{
                 const user_email = req.query.user_email;
-                const query = {};
-                if(user_email){
-                    query.user_email = user_email;
-                }
-                const cursor = myPropertyCollection.find(query);
-                const result = await cursor.toArray();
+                const query = { user_email: user_email};
+                const result = await productsCollection.find(query).toArray();
                 res.send(result); 
             })
-             app.post('/myproperty', async(req, res) => {
-                const newMyproperty = req.body;
-                const result = await myPropertyCollection.insertOne(newRating);
-                res.send(result);
-             })
-             app.get('/myproperty/:id', async(req, res) =>{
-                const id = req.params.id;
-                const query = { _id: new ObjectId(id)}
-                const result = await myPropertyCollection.findOne(query);
-                res.send(result);
-            })
-            app.delete('/myproperty/:id', async(req, res) => {
-                const id = req.params.id;
-                const query = { _id: new ObjectId(id)}
-                const result = await myPropertyCollection.deleteOne(query);
-                res.send(result);
-            })
-
-                            // rating related apis
-            app.get('/rating', verifyFirebaseToken, async(req, res) =>{
-                const user_email = req.query.user_email;
-                const query = {};
-                if(user_email){
-                    if(user_email !== req.token_email){
-                        return res.status(403).send({message: 'forbidden access'})
+             
+           app.get('/rating', verifyFirebaseToken, async (req, res) => {
+                try {
+                  const user_email = req.query.user_email;
+                
+                  if (!user_email) {
+                    return res.status(400).send({ message: 'Email required' });
+                  }
+              
+                  if (user_email !== req.token_email) {
+                    return res.status(403).send({ message: 'forbidden access' });
+                  }
+              
+                  const result = await ratingCollection.aggregate([
+                    {
+                      $match: { user_email }
+                    },
+                    {
+                      $lookup: {
+                        from: "products",
+                        localField: "product",
+                        foreignField: "_id",
+                        as: "productInfo"
+                      }
+                    },
+                    {
+                      $unwind: {
+                        path: "$productInfo",
+                        preserveNullAndEmptyArrays: true
+                      }
                     }
-                    query.user_email = user_email;
+                  ]).toArray();
+              
+                  res.send(result);
+              
+                } catch (error) {
+                  console.log("🔥 ERROR:", error);   // 👈 console এ exact error দেখবে
+                  res.status(500).send({ message: 'Internal Server Error' });
                 }
-                const cursor = ratingCollection.find(query);
-                const result = await cursor.toArray();
-                res.send(result);
-            })
-            //  app.get('/rating', async(req, res) =>{
-            //     const user_email = req.query.user_email;
-            //     const query = {};
-            //     if(query.user_email){
-            //         query.user_email = user_email;
-            //     }
-            //     const cursor = ratingCollection.find(query);
-            //     const result = await cursor.toArray();
-            //     res.send(result);
-            // })
+            });
             app.get('/products/rating/:productId',async(req, res) => {
                 const productId = req.params.productId;
                 const query = {product: productId}
