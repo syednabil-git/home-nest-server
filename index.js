@@ -3,23 +3,42 @@ const cors = require('cors');
 require('dotenv').config();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
+const admin = require("firebase-admin");
 const port = process.env.PORT || 3000;
-console.log(process.env);
+
+
+
+const serviceAccount = require("./home-nest-firebase-adminsdk.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
 // middleWare
 app.use(cors());
 app.use(express.json())
 
-const verifyFirebaseToken = (req, res, next) => {
+const verifyFirebaseToken = async(req, res, next) => {
+    const authorization = req.headers.authorization;
     console.log("in the verify middleware", req.headers.authorization)
-    if(!req.headers.authorization) {
+    if(!authorization) {
         return res.status(401).send({ message: 'unauthorized access'})
     }
-    const token = req.headers.authorization.split(' ')[1];
+    const token = authorization.split(' ')[1];
     if(!token) {
         return res.status(401).send({message: 'unauthorized access' })
     }
+    try{
+       const userInfo = await admin.auth().verifyIdToken(token);
+       req.token_email = userInfo.email;
+       console.log('after token validation', userInfo)
+        next();
+    }
+    catch{
+        return res.status(401).send({message: 'unauthorized access' })
+    }
 
-    next();
+    
 }
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.otmudjl.mongodb.net/?appName=Cluster0`;
@@ -86,7 +105,7 @@ async function run() {
                 res.send(result);
             } )
 
-            app.post('/products', async(req, res) => {
+            app.post('/products', verifyFirebaseToken, async(req, res) => {
                 const newProduct = req.body;
                 const result = await productsCollection.insertOne(newProduct);
                 res.send(result);
@@ -147,6 +166,9 @@ async function run() {
                 const user_email = req.query.user_email;
                 const query = {};
                 if(user_email){
+                    if(user_email !== req.token_email){
+                        return res.status(403).send({message: 'forbidden access'})
+                    }
                     query.user_email = user_email;
                 }
                 const cursor = ratingCollection.find(query);
