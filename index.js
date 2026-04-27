@@ -150,19 +150,19 @@ async function run() {
              
            app.get('/rating', verifyFirebaseToken, async (req, res) => {
                 try {
-                  const user_email = req.query.user_email;
+                  const email = req.query.email;
                 
-                  if (!user_email) {
+                  if (!email) {
                     return res.status(400).send({ message: 'Email required' });
                   }
               
-                  if (user_email !== req.token_email) {
+                  if (email !== req.token_email) {
                     return res.status(403).send({ message: 'forbidden access' });
                   }
               
                   const result = await ratingCollection.aggregate([
                     {
-                      $match: { user_email }
+                      $match: { email }
                     },
                     {
                       $lookup: {
