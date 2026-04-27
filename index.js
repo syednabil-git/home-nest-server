@@ -97,13 +97,22 @@ async function run() {
                 const result = await cursor.toArray();
                 res.send(result)
             })
-            
-            app.get('/products/:id', async(req, res) =>{
-                const id = req.params.id;
-                const query = { product_id: req.params.id};
-                const result = await productsCollection.findOne(query);
-                res.send(result);
-            } )
+           app.get('/products/:id', async (req, res) => {
+            const id = req.params.id;
+
+              try {
+              const query = { _id: new ObjectId(id) };
+              const result = await productsCollection.findOne(query);
+
+              if (!result) {
+              return res.status(404).json({ message: "Product not found" });
+                }
+
+                res.json(result); 
+                } catch (error) {
+                res.status(400).json({ message: "Invalid ID format" });
+                }
+              });
 
             app.post('/products', verifyFirebaseToken, async(req, res) => {
                 const newProduct = req.body;
@@ -117,8 +126,7 @@ async function run() {
                 const query = { _id: new ObjectId(id) } 
                 const update = {
                     $set: {
-                        name: updatedProduct.name,
-                        price: updatedProduct.price
+                        ...updatedProduct
                     }
                 }
                 const result = await productsCollection.updateOne(query, update)
