@@ -5,9 +5,6 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
 const admin = require("firebase-admin");
 const port = process.env.PORT || 3000;
-
-
-
 const serviceAccount = require("./home-nest-firebase-adminsdk.json");
 
 admin.initializeApp({
@@ -36,9 +33,7 @@ const verifyFirebaseToken = async(req, res, next) => {
     }
     catch{
         return res.status(401).send({message: 'unauthorized access' })
-    }
-
-    
+    } 
 }
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.otmudjl.mongodb.net/?appName=Cluster0`;
@@ -151,7 +146,6 @@ async function run() {
            app.get('/rating', verifyFirebaseToken, async (req, res) => {
                 try {
                   const email = req.query.email;
-                
                   if (!email) {
                     return res.status(400).send({ message: 'Email required' });
                   }
@@ -159,7 +153,6 @@ async function run() {
                   if (email !== req.token_email) {
                     return res.status(403).send({ message: 'forbidden access' });
                   }
-              
                   const result = await ratingCollection.aggregate([
                     {
                       $match: { email }
